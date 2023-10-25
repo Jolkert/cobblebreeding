@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "id": "cobblebreeding",
+  "version": "${version}",
+  "name": "cobblebreeding",
+  "description": "Adds breeding to Cobblemon",
+  "authors": [
+    "Jolkert"
+  ],
+  "contact": {
+    "website": "jolkert.github.io",
+    "repo": "https://github.com/Jolkert/cobblebreeding"
+  },
+  "license": "GPL-3.0",
+  "icon": "assets/cobblebreeding/icon.png",
+  "environment": "server",
+  "entrypoints": {
+    "main": [
+      {
+        "adapter": "kotlin",
+        "value": "io.github.jolkert.cobblebreeding.Cobblebreeding"
+      }
+    ]
+  },
+  "mixins": [
+    "cobblebreeding.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": ">=${loader_version}",
+    "fabric": "*",
+    "minecraft": "${minecraft_version}",
+    "fabric-language-kotlin": ">=${fabric_language_kotlin_version}",
+    "cobblemon": ">=${cobblemon_version}"
+  }
+}
