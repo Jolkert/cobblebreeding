@@ -13,7 +13,7 @@
   },
   "license": "GPL-3.0",
   "icon": "assets/cobblebreeding/icon.png",
-  "environment": "server",
+  "environment": "*",
   "entrypoints": {
     "main": [
       {
