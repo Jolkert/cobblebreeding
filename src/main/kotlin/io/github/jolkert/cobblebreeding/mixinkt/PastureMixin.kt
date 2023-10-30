@@ -13,8 +13,10 @@ import net.minecraft.util.math.BlockPos
 fun overrideUse(hit: BlockHitResult, state: BlockState, basePos: BlockPos): CancellableResult<ActionResult>
 {
 	Cobblebreeding.Logger.warn("basePos = $basePos")
-	return if (state[PastureBlock.PART] == PastureBlock.PasturePart.BOTTOM && hit.side == state[HorizontalFacingBlock.FACING])
-		CancellableResult(ActionResult.SUCCESS, true)
-	else
-		CancellableResult(null, false)
+	Cobblebreeding.Logger.warn("hit at: ${hit.pos}")
+	Cobblebreeding.Logger.warn("side: ${hit.side}\n")
+	if (state[PastureBlock.PART] != PastureBlock.PasturePart.BOTTOM || hit.side == state[HorizontalFacingBlock.FACING].opposite)
+		return CancellableResult(null, false)
+
+	return CancellableResult(ActionResult.SUCCESS, true)
 }
