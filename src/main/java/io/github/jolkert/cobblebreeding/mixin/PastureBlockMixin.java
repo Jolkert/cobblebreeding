@@ -2,6 +2,7 @@ package io.github.jolkert.cobblebreeding.mixin;
 
 import com.cobblemon.mod.common.block.PastureBlock;
 import com.cobblemon.mod.common.block.entity.PokemonPastureBlockEntity;
+import io.github.jolkert.cobblebreeding.Cobblebreeding;
 import io.github.jolkert.cobblebreeding.mixinkt.CancellableResult;
 import io.github.jolkert.cobblebreeding.mixinkt.PastureMixinKt;
 import net.minecraft.block.Block;
@@ -34,7 +35,7 @@ public class PastureBlockMixin
 			locals = LocalCapture.CAPTURE_FAILHARD)
 	void onUseMixin(BlockState state, World world, BlockPos pos, PlayerEntity player, Hand hand, BlockHitResult hit, CallbackInfoReturnable<ActionResult> cir, BlockPos basePos, BlockEntity baseEntity)
 	{
-		CancellableResult<ActionResult> result = PastureMixinKt.overrideUse(hit, state, (PokemonPastureBlockEntity)baseEntity);
+		CancellableResult<ActionResult> result = PastureMixinKt.overrideUse(hit, state, (PokemonPastureBlockEntity)baseEntity, player);
 		if (result.getValue() != null)
 			cir.setReturnValue(result.getValue());
 		if (result.getShouldCancel())
@@ -47,7 +48,7 @@ public class PastureBlockMixin
 	{
 		if (cir.getReturnValue() != null)
 		{
-			BlockState returnValue = cir.getReturnValue().with(PastureMixinKt.getHAS_EGG_PROPERTY(), false);
+			BlockState returnValue = cir.getReturnValue().with(PastureMixinKt.HAS_EGG_PROPERTY, false);
 			cir.setReturnValue(returnValue);
 		}
 	}
@@ -56,6 +57,6 @@ public class PastureBlockMixin
 			at = @At(value = "TAIL"))
 	void addHasEggProperty(StateManager.Builder<Block, BlockState> builder, CallbackInfo ci)
 	{
-		builder.add(PastureMixinKt.getHAS_EGG_PROPERTY());
+		builder.add(PastureMixinKt.HAS_EGG_PROPERTY);
 	}
 }
