@@ -3,6 +3,7 @@ package io.github.jolkert.cobblebreeding.mixinkt
 import com.cobblemon.mod.common.Cobblemon
 import com.cobblemon.mod.common.api.pokeball.PokeBalls
 import com.cobblemon.mod.common.api.pokemon.Natures
+import com.cobblemon.mod.common.api.pokemon.PokemonSpecies
 import com.cobblemon.mod.common.api.pokemon.egg.EggGroup
 import com.cobblemon.mod.common.api.pokemon.stats.Stat
 import com.cobblemon.mod.common.api.pokemon.stats.Stats
@@ -23,6 +24,7 @@ import net.minecraft.item.ItemStack
 import net.minecraft.state.property.BooleanProperty
 import net.minecraft.util.ActionResult
 import net.minecraft.util.hit.BlockHitResult
+import kotlin.random.Random
 
 fun overrideUse(
 	hit: BlockHitResult,
@@ -61,10 +63,43 @@ private fun breed(parents: Pair<Pokemon, Pokemon>): Pokemon
 	val baby = Pokemon()
 
 	// species
-	baby.species = dominantParent.species.baseForm()
-	// todo: special cases for nidos, volbeat/illumise, and manaphy[??]
-	// todo: regional forms
-	// todo: fucking incense?
+	baby.species = baseSpecies(dominantParent.species).let {
+		if (it.resourceIdentifier.toString().startsWith("cobblemon:nidoran"))
+			PokemonSpecies.getByIdentifier(cobblemonResource(if (Random.nextBoolean()) "nidoranm" else "nidoranf"))!!
+		else if (it.resourceIdentifier == cobblemonResource("volbeat") || it.resourceIdentifier == cobblemonResource("illumise"))
+			PokemonSpecies.getByIdentifier(cobblemonResource(if (Random.nextBoolean()) "volbeat" else "illumise"))!!
+		else
+			it
+	}
+
+	// form
+	/*
+		this form code is terrible. really it *should* just take the dominant parents form as well but the games are weird
+		like in game, breeding two johto woopers in paldea give you a paldean wooper. ????
+		just seems a bit silly to me. since theres no "region" it doesnt really make sense for it to work that way in cobblemon anyways?
+		idk maybe i'll change. i dont *like* breaking ingame consistency, but is it really consistent as is? i dont think so
+		- morgan 2023-11-05
+	*/
+	val everstoneForms = parents.mapToList {
+		if (it.heldItem().isIn(CobblemonItemTags.EVERSTONE)
+			&& it.isSameEvoLineAs(baby))
+		{
+			it.form.formOnlyShowdownId()
+		}
+		else
+			null
+	}.filterNotNull()
+
+	val nonEverstoneForms = parents.mapToList {
+		if (it.isSameEvoLineAs(baby))
+			it.form.formOnlyShowdownId()
+		else
+			null
+	}.filterNotNull()
+
+	baby.form = everstoneForms.ifEmpty { nonEverstoneForms }.random().let { form ->
+		baby.species.forms.firstOrNull { it.formOnlyShowdownId() == form } ?: baby.species.standardForm
+	}
 
 	// nature
 	val heritableNatures = parents.mapToList {
@@ -73,8 +108,10 @@ private fun breed(parents: Pair<Pokemon, Pokemon>): Pokemon
 		else
 			null
 	}.filterNotNull()
-
 	baby.nature = if (heritableNatures.isEmpty()) Natures.getRandomNature() else heritableNatures.random()
+
+	heritableNatures.isNotEmpty()
+
 
 	// ball
 	baby.caughtBall = (if (!parents.areSameSpecies()) dominantParent else parents.random()).caughtBall.let {
@@ -139,16 +176,27 @@ private fun Pair<Pokemon, Pokemon>.canBreed(): Boolean
 
 	return first.species.eggGroups.containsAny(second.species.eggGroups)
 }
-private fun Pair<Pokemon, Pokemon>.areSameSpecies() = first.species.resourceIdentifier == second.species.resourceIdentifier
+
+/*
+	do different stages of the same line count as the same species?
+	illumise + volbeat? nidof + nidom??
+	bulba is nonspecific. im unsure
+	- morgan 2023-11-04
+*/
+private fun Pair<Pokemon, Pokemon>.areSameSpecies() =
+	first.species.resourceIdentifier == second.species.resourceIdentifier
 
 private fun Pokemon.isDitto() = this.species.resourceIdentifier == cobblemonResource("ditto")
-private fun Species.baseForm(): Species
+private tailrec fun baseSpecies(species: Species): Species
 {
-	val preEvo = this.preEvolution
-	return preEvo?.species?.baseForm() ?: this
+	// for some reason kotlin doesnt like tailrec on extension functions?
+	// i feel like extensions should just be smoothed into static methods at compilation but ig not ¯\_(ツ)_/¯ -morgan 2023-11-04
+	val preEvo = species.preEvolution?.species ?: return species
+	return baseSpecies(preEvo)
 }
 
-private inline fun <T, R> Pair<T, T>.mapToList(transform: (T) -> R) = listOf(transform(first), transform(second))
+private fun Pokemon.isSameEvoLineAs(other: Pokemon) =
+	baseSpecies(this.species).resourceIdentifier == baseSpecies(other.species).resourceIdentifier
 
 @JvmField
 val HAS_EGG_PROPERTY: BooleanProperty = BooleanProperty.of("has_egg")
