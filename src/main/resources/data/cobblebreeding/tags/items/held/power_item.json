@@ -1,11 +1,11 @@
 {
   "replace": false,
   "values": [
-    "#cobblemon:power_anklet",
-    "#cobblemon:power_band",
-    "#cobblemon:power_belt",
-    "#cobblemon:power_bracer",
-    "#cobblemon:power_lens",
-    "#cobblemon:power_weight"
+    "#cobblemon:held/power_anklet",
+    "#cobblemon:held/power_band",
+    "#cobblemon:held/power_belt",
+    "#cobblemon:held/power_bracer",
+    "#cobblemon:held/power_lens",
+    "#cobblemon:held/power_weight"
   ]
 }
