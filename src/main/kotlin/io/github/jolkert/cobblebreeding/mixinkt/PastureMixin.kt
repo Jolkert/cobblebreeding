@@ -1,6 +1,9 @@
 package io.github.jolkert.cobblebreeding.mixinkt
 
 import com.cobblemon.mod.common.Cobblemon
+import com.cobblemon.mod.common.api.moves.BenchedMove
+import com.cobblemon.mod.common.api.moves.Move
+import com.cobblemon.mod.common.api.moves.MoveTemplate
 import com.cobblemon.mod.common.api.pokeball.PokeBalls
 import com.cobblemon.mod.common.api.pokemon.Natures
 import com.cobblemon.mod.common.api.pokemon.PokemonProperties
@@ -145,7 +148,22 @@ private fun breed(parents: Pair<Pokemon, Pokemon>): Pokemon
 	for (stat in statsPriority.take(numStatsToInherit))
 		baby.ivs!![stat] = parents.random().ivs[stat]!!
 
-	return baby.create()
+	// Moves
+	val moveset = mutableSetOf<MoveTemplate>()
+	moveset.addAll(species.moves.getLevelUpMovesUpTo(1))
+	moveset.addAll((species.moves.getLevelUpMovesUpTo(100) + species.moves.eggMoves).filter { move ->
+		parents.either { parent -> parent.moveSet.map { it.template.name }.contains(move.name) }
+	})
+
+	return baby.create().apply {
+		for ((i, move) in moveset.withIndex())
+		{
+			if (i < 4)
+				this.moveSet.add(move.create())
+			else
+				this.benchedMoves.add(BenchedMove(move, 0))
+		}
+	}
 }
 
 private fun ItemStack.associatedStat(): Stat? =
