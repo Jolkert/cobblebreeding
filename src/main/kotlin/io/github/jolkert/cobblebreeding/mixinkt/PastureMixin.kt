@@ -3,14 +3,17 @@ package io.github.jolkert.cobblebreeding.mixinkt
 import com.cobblemon.mod.common.Cobblemon
 import com.cobblemon.mod.common.api.pokeball.PokeBalls
 import com.cobblemon.mod.common.api.pokemon.Natures
+import com.cobblemon.mod.common.api.pokemon.PokemonProperties
 import com.cobblemon.mod.common.api.pokemon.PokemonSpecies
 import com.cobblemon.mod.common.api.pokemon.egg.EggGroup
+import com.cobblemon.mod.common.api.pokemon.feature.FlagSpeciesFeature
 import com.cobblemon.mod.common.api.pokemon.stats.Stat
 import com.cobblemon.mod.common.api.pokemon.stats.Stats
 import com.cobblemon.mod.common.api.tags.CobblemonItemTags
 import com.cobblemon.mod.common.block.PastureBlock
 import com.cobblemon.mod.common.block.entity.PokemonPastureBlockEntity
 import com.cobblemon.mod.common.pokemon.Gender
+import com.cobblemon.mod.common.pokemon.IVs
 import com.cobblemon.mod.common.pokemon.Pokemon
 import com.cobblemon.mod.common.pokemon.Species
 import com.cobblemon.mod.common.pokemon.stat.CobblemonStatProvider
@@ -60,10 +63,9 @@ private fun breed(parents: Pair<Pokemon, Pokemon>): Pokemon
 		parents.firstMatching { it.gender == Gender.FEMALE })
 		?: parents.first // one of the parents should either be female or non-ditto or something has gone wrong, but we march on either way -morgan 2023-10-31
 
-	val baby = Pokemon()
-
+	val baby = PokemonProperties()
 	// species
-	baby.species = baseSpecies(dominantParent.species).let {
+	val species = baseSpecies(dominantParent.species).let {
 		if (it.resourceIdentifier.toString().startsWith("cobblemon:nidoran"))
 			PokemonSpecies.getByIdentifier(cobblemonResource(if (Random.nextBoolean()) "nidoranm" else "nidoranf"))!!
 		else if (it.resourceIdentifier == cobblemonResource("volbeat") || it.resourceIdentifier == cobblemonResource("illumise"))
@@ -71,6 +73,7 @@ private fun breed(parents: Pair<Pokemon, Pokemon>): Pokemon
 		else
 			it
 	}
+	baby.species = species.showdownId()
 
 	// form
 	/*
@@ -82,24 +85,25 @@ private fun breed(parents: Pair<Pokemon, Pokemon>): Pokemon
 	*/
 	val everstoneForms = parents.mapToList {
 		if (it.heldItem().isIn(CobblemonItemTags.EVERSTONE)
-			&& it.isSameEvoLineAs(baby))
+			&& it.isSameEvoLineAs(species))
 		{
 			it.form.formOnlyShowdownId()
 		}
 		else
 			null
 	}.filterNotNull()
-
 	val nonEverstoneForms = parents.mapToList {
-		if (it.isSameEvoLineAs(baby))
+		if (it.isSameEvoLineAs(species))
 			it.form.formOnlyShowdownId()
 		else
 			null
 	}.filterNotNull()
 
-	baby.form = everstoneForms.ifEmpty { nonEverstoneForms }.random().let { form ->
-		baby.species.forms.firstOrNull { it.formOnlyShowdownId() == form } ?: baby.species.standardForm
+	val form = everstoneForms.ifEmpty { nonEverstoneForms }.random().let { form ->
+		species.forms.firstOrNull { it.formOnlyShowdownId() == form } ?: species.standardForm
 	}
+	baby.form = form.name
+	form.aspects.forEach { baby.customProperties.add(FlagSpeciesFeature(it, true)) }
 
 	// nature
 	val heritableNatures = parents.mapToList {
@@ -108,22 +112,18 @@ private fun breed(parents: Pair<Pokemon, Pokemon>): Pokemon
 		else
 			null
 	}.filterNotNull()
-	baby.nature = if (heritableNatures.isEmpty()) Natures.getRandomNature() else heritableNatures.random()
-
-	heritableNatures.isNotEmpty()
-
+	baby.nature = (if (heritableNatures.isEmpty()) Natures.getRandomNature() else heritableNatures.random()).name.path
 
 	// ball
-	baby.caughtBall = (if (!parents.areSameSpecies()) dominantParent else parents.random()).caughtBall.let {
+	baby.pokeball = (if (!parents.areSameSpecies()) dominantParent else parents.random()).caughtBall.let {
 		if (!it.stack().isIn(Cobblebreeding.UNINHERITABLE_BALLS))
 			it
 		else
 			PokeBalls.POKE_BALL
-	}
+	}.name.path
 
 	// IVs
 	val statsPriority = CobblemonStatProvider.ofType(Stat.Type.PERMANENT).shuffled().toMutableList()
-
 	val powerItems = parents.mapToList {
 		if (it.heldItem().isIn(Cobblebreeding.POWER_ITEMS))
 			it.heldItem().associatedStat()!! to it
@@ -131,20 +131,21 @@ private fun breed(parents: Pair<Pokemon, Pokemon>): Pokemon
 			null
 	}.filterNotNull()
 
+	baby.ivs = IVs.createRandomIVs()
 	val parentHasPowerItem = powerItems.isNotEmpty()
 	if (parentHasPowerItem)
 	{
 		val (stat, parent) = powerItems.random()
-		baby.ivs[stat] = parent.ivs[stat]!!
+		baby.ivs!![stat] = parent.ivs[stat]!!
 		statsPriority.remove(stat)
 	}
 	val numStatsToInherit = (if (parents.either { it.heldItem().isIn(CobblemonItemTags.DESTINY_KNOT) }) 5 else 3) -
 			(if (parentHasPowerItem) 1 else 0)
 
 	for (stat in statsPriority.take(numStatsToInherit))
-		baby.ivs[stat] = parents.random().ivs[stat]!!
+		baby.ivs!![stat] = parents.random().ivs[stat]!!
 
-	return baby
+	return baby.create()
 }
 
 private fun ItemStack.associatedStat(): Stat? =
@@ -195,8 +196,8 @@ private tailrec fun baseSpecies(species: Species): Species
 	return baseSpecies(preEvo)
 }
 
-private fun Pokemon.isSameEvoLineAs(other: Pokemon) =
-	baseSpecies(this.species).resourceIdentifier == baseSpecies(other.species).resourceIdentifier
+private fun Pokemon.isSameEvoLineAs(other: Species) =
+	baseSpecies(this.species).resourceIdentifier == baseSpecies(other).resourceIdentifier
 
 @JvmField
 val HAS_EGG_PROPERTY: BooleanProperty = BooleanProperty.of("has_egg")
