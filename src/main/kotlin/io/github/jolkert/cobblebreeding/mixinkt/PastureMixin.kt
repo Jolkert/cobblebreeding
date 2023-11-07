@@ -1,8 +1,8 @@
 package io.github.jolkert.cobblebreeding.mixinkt
 
 import com.cobblemon.mod.common.Cobblemon
+import com.cobblemon.mod.common.api.Priority
 import com.cobblemon.mod.common.api.moves.BenchedMove
-import com.cobblemon.mod.common.api.moves.Move
 import com.cobblemon.mod.common.api.moves.MoveTemplate
 import com.cobblemon.mod.common.api.pokeball.PokeBalls
 import com.cobblemon.mod.common.api.pokemon.Natures
@@ -12,13 +12,12 @@ import com.cobblemon.mod.common.api.pokemon.egg.EggGroup
 import com.cobblemon.mod.common.api.pokemon.feature.FlagSpeciesFeature
 import com.cobblemon.mod.common.api.pokemon.stats.Stat
 import com.cobblemon.mod.common.api.pokemon.stats.Stats
+import com.cobblemon.mod.common.api.storage.party.PartyPosition
 import com.cobblemon.mod.common.api.tags.CobblemonItemTags
 import com.cobblemon.mod.common.block.PastureBlock
 import com.cobblemon.mod.common.block.entity.PokemonPastureBlockEntity
-import com.cobblemon.mod.common.pokemon.Gender
-import com.cobblemon.mod.common.pokemon.IVs
-import com.cobblemon.mod.common.pokemon.Pokemon
-import com.cobblemon.mod.common.pokemon.Species
+import com.cobblemon.mod.common.pokemon.*
+import com.cobblemon.mod.common.pokemon.abilities.HiddenAbility
 import com.cobblemon.mod.common.pokemon.stat.CobblemonStatProvider
 import com.cobblemon.mod.common.util.cobblemonResource
 import io.github.jolkert.cobblebreeding.Cobblebreeding
@@ -28,6 +27,7 @@ import net.minecraft.block.HorizontalFacingBlock
 import net.minecraft.entity.player.PlayerEntity
 import net.minecraft.item.ItemStack
 import net.minecraft.state.property.BooleanProperty
+import net.minecraft.text.Text
 import net.minecraft.util.ActionResult
 import net.minecraft.util.hit.BlockHitResult
 import kotlin.random.Random
@@ -117,6 +117,16 @@ private fun breed(parents: Pair<Pokemon, Pokemon>): Pokemon
 	}.filterNotNull()
 	baby.nature = (if (heritableNatures.isEmpty()) Natures.getRandomNature() else heritableNatures.random()).name.path
 
+	// ability (oh boy)
+	if (!dominantParent.hasHiddenAbility())
+	{
+		if (Random.nextInt(100) < 20) // 80% normal ability pass
+			baby.ability = form.abilities.mapping[Priority.LOWEST]!![dominantParent.ability.index].template.name
+	}
+	else if (form.hiddenAbility() != null && Random.nextInt(100) < 40) // 60% HA pass
+			baby.ability = form.hiddenAbility()!!.template.name
+	// leaving baby.ability as null *should* randomize the ability right?
+
 	// ball
 	baby.pokeball = (if (!parents.areSameSpecies()) dominantParent else parents.random()).caughtBall.let {
 		if (!it.stack().isIn(Cobblebreeding.UNINHERITABLE_BALLS))
@@ -163,6 +173,8 @@ private fun breed(parents: Pair<Pokemon, Pokemon>): Pokemon
 			else
 				this.benchedMoves.add(BenchedMove(move, 0))
 		}
+
+		ability.forced = false // why does it auto-force the ability?
 	}
 }
 
@@ -216,6 +228,9 @@ private tailrec fun baseSpecies(species: Species): Species
 
 private fun Pokemon.isSameEvoLineAs(other: Species) =
 	baseSpecies(this.species).resourceIdentifier == baseSpecies(other).resourceIdentifier
+
+private fun Pokemon.hasHiddenAbility() = this.ability.name == this.form.hiddenAbility()?.template?.name
+private fun FormData.hiddenAbility() = this.abilities.filterIsInstance<HiddenAbility>().firstOrNull()
 
 @JvmField
 val HAS_EGG_PROPERTY: BooleanProperty = BooleanProperty.of("has_egg")
