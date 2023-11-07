@@ -12,7 +12,6 @@ import com.cobblemon.mod.common.api.pokemon.egg.EggGroup
 import com.cobblemon.mod.common.api.pokemon.feature.FlagSpeciesFeature
 import com.cobblemon.mod.common.api.pokemon.stats.Stat
 import com.cobblemon.mod.common.api.pokemon.stats.Stats
-import com.cobblemon.mod.common.api.storage.party.PartyPosition
 import com.cobblemon.mod.common.api.tags.CobblemonItemTags
 import com.cobblemon.mod.common.block.PastureBlock
 import com.cobblemon.mod.common.block.entity.PokemonPastureBlockEntity
@@ -27,7 +26,6 @@ import net.minecraft.block.HorizontalFacingBlock
 import net.minecraft.entity.player.PlayerEntity
 import net.minecraft.item.ItemStack
 import net.minecraft.state.property.BooleanProperty
-import net.minecraft.text.Text
 import net.minecraft.util.ActionResult
 import net.minecraft.util.hit.BlockHitResult
 import kotlin.random.Random
@@ -36,7 +34,7 @@ fun overrideUse(
 	hit: BlockHitResult,
 	state: BlockState,
 	pastureBlockEntity: PokemonPastureBlockEntity,
-	player: PlayerEntity
+	player: PlayerEntity,
 ): CancellableResult<ActionResult>
 {
 	if (state[PastureBlock.PART] != PastureBlock.PasturePart.BOTTOM || hit.side == state[HorizontalFacingBlock.FACING].opposite)
@@ -69,12 +67,14 @@ private fun breed(parents: Pair<Pokemon, Pokemon>): Pokemon
 	val baby = PokemonProperties()
 	// species
 	val species = baseSpecies(dominantParent.species).let {
-		if (it.resourceIdentifier.toString().startsWith("cobblemon:nidoran"))
-			PokemonSpecies.getByIdentifier(cobblemonResource(if (Random.nextBoolean()) "nidoranm" else "nidoranf"))!!
-		else if (it.resourceIdentifier == cobblemonResource("volbeat") || it.resourceIdentifier == cobblemonResource("illumise"))
-			PokemonSpecies.getByIdentifier(cobblemonResource(if (Random.nextBoolean()) "volbeat" else "illumise"))!!
-		else
-			it
+		when (it.nationalPokedexNumber)
+		{
+			// 29 == nidoran-f; 32 == nidoran-m
+			29, 32 -> PokemonSpecies.getByPokedexNumber(if (Random.nextBoolean()) 29 else 32)!!
+			// 313 == volbeat; 314 == illumise
+			313, 314 -> PokemonSpecies.getByPokedexNumber((if (Random.nextBoolean()) 313 else 314))!!
+			else -> it
+		}
 	}
 	baby.species = species.showdownId()
 
@@ -87,11 +87,8 @@ private fun breed(parents: Pair<Pokemon, Pokemon>): Pokemon
 		- morgan 2023-11-05
 	*/
 	val everstoneForms = parents.mapToList {
-		if (it.heldItem().isIn(CobblemonItemTags.EVERSTONE)
-			&& it.isSameEvoLineAs(species))
-		{
+		if (it.heldItem().isIn(CobblemonItemTags.EVERSTONE) && it.isSameEvoLineAs(species))
 			it.form.formOnlyShowdownId()
-		}
 		else
 			null
 	}.filterNotNull()
@@ -124,7 +121,7 @@ private fun breed(parents: Pair<Pokemon, Pokemon>): Pokemon
 			baby.ability = form.abilities.mapping[Priority.LOWEST]!![dominantParent.ability.index].template.name
 	}
 	else if (form.hiddenAbility() != null && Random.nextInt(100) < 60) // 60% HA pass
-			baby.ability = form.hiddenAbility()!!.template.name
+		baby.ability = form.hiddenAbility()!!.template.name
 	// leaving baby.ability as null *should* randomize the ability right?
 
 	// ball
