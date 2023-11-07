@@ -120,10 +120,10 @@ private fun breed(parents: Pair<Pokemon, Pokemon>): Pokemon
 	// ability (oh boy)
 	if (!dominantParent.hasHiddenAbility())
 	{
-		if (Random.nextInt(100) < 20) // 80% normal ability pass
+		if (Random.nextInt(100) < 80) // 80% normal ability pass
 			baby.ability = form.abilities.mapping[Priority.LOWEST]!![dominantParent.ability.index].template.name
 	}
-	else if (form.hiddenAbility() != null && Random.nextInt(100) < 40) // 60% HA pass
+	else if (form.hiddenAbility() != null && Random.nextInt(100) < 60) // 60% HA pass
 			baby.ability = form.hiddenAbility()!!.template.name
 	// leaving baby.ability as null *should* randomize the ability right?
 
