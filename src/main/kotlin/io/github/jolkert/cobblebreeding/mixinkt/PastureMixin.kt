@@ -66,7 +66,7 @@ private fun breed(parents: Pair<Pokemon, Pokemon>): Pokemon
 
 	val baby = PokemonProperties()
 	// species
-	val species = baseSpecies(dominantParent.species).let {
+	val species = dominantParent.species.baseSpecies().let {
 		when (it.nationalPokedexNumber)
 		{
 			// 29 == nidoran-f; 32 == nidoran-m
@@ -215,6 +215,8 @@ private fun Pair<Pokemon, Pokemon>.areSameSpecies() =
 	first.species.resourceIdentifier == second.species.resourceIdentifier
 
 private fun Pokemon.isDitto() = this.species.resourceIdentifier == cobblemonResource("ditto")
+
+private fun Species.baseSpecies() = baseSpecies(this) // thats one way to do it lol -morgan 2023-11-15
 private tailrec fun baseSpecies(species: Species): Species
 {
 	// for some reason kotlin doesnt like tailrec on extension functions?
@@ -224,7 +226,7 @@ private tailrec fun baseSpecies(species: Species): Species
 }
 
 private fun Pokemon.isSameEvoLineAs(other: Species) =
-	baseSpecies(this.species).resourceIdentifier == baseSpecies(other).resourceIdentifier
+	this.species.baseSpecies().resourceIdentifier == other.baseSpecies().resourceIdentifier
 
 private fun Pokemon.hasHiddenAbility() = this.ability.name == this.form.hiddenAbility()?.template?.name
 private fun FormData.hiddenAbility() = this.abilities.filterIsInstance<HiddenAbility>().firstOrNull()
